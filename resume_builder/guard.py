@@ -24,22 +24,32 @@ class HallucinationGuard:
             logger.warning(f"Leadership inflation detected: Reverting '{tail_lower[:40]}...'")
             return False
 
-        def get_proper_nouns(text):
-            return set(re.findall(r'\b[A-Z0-9][a-zA-Z0-9+#.]*\b', text))
+        def get_tech_terms(text):
+            # Only capture strict technology signatures to avoid false positives on normal words:
+            # 1. ALL CAPS acronyms (e.g., AWS, API, SQL)
+            # 2. camelCase words (e.g., JavaScript, GitHub)
+            # 3. Terms with specific tech symbols (e.g., C++, C#, Node.js, .NET)
+            terms = set()
+            terms.update(re.findall(r'\b[A-Z]{2,}\b', text)) # ALL CAPS
+            terms.update(re.findall(r'\b[a-z]+[A-Z][a-zA-Z]*\b', text)) # camelCase
+            terms.update(re.findall(r'\b[A-Za-z0-9]+(?:\+|-|#|\.)[A-Za-z0-9+#.]*\b', text)) # Symbols
+            return terms
         
-        orig_nouns = {n.lower() for n in get_proper_nouns(original)}
-        tail_nouns = {n.lower() for n in get_proper_nouns(tailored)}
+        orig_tech = {n.lower() for n in get_tech_terms(original)}
+        tail_tech = {n.lower() for n in get_tech_terms(tailored)}
         
-        allowed_nouns = {"the", "a", "an", "i", "to", "with", "in", "as", "our", "its", "by", "from", "on", "into", "within", "for", "and", "or"}
+        allowed_tech = set()
         for k in target_keywords:
             for word in k.lower().split():
-                allowed_nouns.add(word)
+                allowed_tech.add(word)
         
-        illicit_additions = tail_nouns - orig_nouns - allowed_nouns
-        if illicit_additions:
-            generic_nouns = {"marketplace", "solutions", "environment", "platform", "applications"}
-            if illicit_additions - generic_nouns:
-                logger.warning(f"Potential tech/noun hallucination: {illicit_additions}")
+        illicit_tech = tail_tech - orig_tech - allowed_tech
+        if illicit_tech:
+            # Ignore some common non-tech false positives
+            generic_ignore = {"co-worker", "e-commerce", "end-to-end", "cross-functional"}
+            illicit_tech = illicit_tech - generic_ignore
+            if illicit_tech:
+                logger.warning(f"Potential tech hallucination: {illicit_tech}")
                 return False
             
         return True

@@ -21,6 +21,7 @@ class ProjectEntry(BaseModel):
 class ATSReport(BaseModel):
     target_keywords: List[str]
     found_keywords: List[str]
+    added_keywords: List[str] = []
     missing_keywords: List[str]
     total_score: float
     source_hash: Optional[str] = None

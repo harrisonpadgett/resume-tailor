@@ -1,0 +1,22 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+
+# Virtual environments and environment files
+.env
+venv/
+.venv/
+
+# IDE files
+.vscode/
+.idea/
+.DS_Store
+
+# Project artifacts and logs
+tailored_resumes/
+api.log
+*.log
+
+# Personal / sample data
+experience.json
+*.pdf

@@ -1,0 +1,185 @@
+%-------------------------
+% Resume in Latex
+% Author : Jake Gutierrez
+% Based off of: https://github.com/sb2nov/resume
+% License : MIT
+%------------------------
+
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+% tectonic (XeTeX) does not support pdfgentounicode directly
+% \input{glyphtounicode}
+
+
+%----------FONT OPTIONS----------
+% sans-serif
+% \usepackage[sfdefault]{FiraSans}
+% \usepackage[sfdefault]{roboto}
+% \usepackage[sfdefault]{noto-sans}
+% \usepackage[default]{sourcesanspro}
+
+% serif
+% \usepackage{CormorantGaramond}
+% \usepackage{charter}
+
+
+\pagestyle{fancy}
+\fancyhf{} % clear all header and footer fields
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% Adjust margins
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-.5in}
+\addtolength{\textheight}{1.0in}
+
+\urlstyle{same}
+
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+% Sections formatting
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-5pt}]
+
+% Ensure that generate pdf is machine readable/ATS parsable
+% \pdfgentounicode=1
+
+%-------------------------
+% Custom commands
+\newcommand{\resumeItem}[1]{
+  \item\small{
+    {#1 \vspace{-2pt}}
+  }
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubSubheading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \textit{\small#1} & \textit{\small #2} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & #2 \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubItem}[1]{\resumeItem{#1}\vspace{-4pt}}
+
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+
+%-------------------------------------------
+%%%%%%  RESUME STARTS HERE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\begin{document}
+
+\begin{center}
+    \textbf{\Huge \scshape Harrison Padgett} \\ \vspace{1pt}
+    \small Baltimore - Washington D.C. Metro Area $|$ \href{mailto:HarrisonP664@gmail.com}{\underline{ HarrisonP664@gmail.com }} $|$ 
+    \href{https://linkedin.com/in/harrison-padgett/}{\underline{ linkedin.com/in/harrison-padgett/ }} $|$
+    \href{https://github.com/harrisonpadgett}{\underline{ github.com/harrisonpadgett }}
+\end{center}
+
+
+%-----------EDUCATION-----------
+\section{Education}
+  \resumeSubHeadingListStart
+    \resumeSubheading{University of Maryland}{College Park, MD}{B.S., Computer Science}{Aug 2024 – May 2027}
+    \vspace{-2pt}\item \small{\textbf{Relevant Coursework}: Algorithms, Computer Systems, Object-Oriented Programming I \& II, Linear Algebra, Machine Learning, Database Design, Operating Systems, Computer Networks}
+
+  \resumeSubHeadingListEnd
+
+
+%-----------EXPERIENCE-----------
+\section{Experience}
+  \resumeSubHeadingListStart
+    \resumeSubheading{Tech Innovations Inc.}{Techville, CA}{Software Engineer Intern}{May 2024 – Present}
+\resumeItemListStart
+  \resumeItem{Built modular Python tools for large-scale data analysis (10M+ records) using unsupervised clustering algorithms to enhance data separation accuracy}
+  \resumeItem{Accelerated data analyst workflow by 90\%+, cutting task duration from 15 minutes to seconds using parallel processing techniques}
+\resumeItemListEnd
+\resumeSubheading{State University IT Department}{Metropolis, NY}{Full Stack Web Developer}{Oct 2023 – May 2024}
+\resumeItemListStart
+  \resumeItem{Engineered full-stack features for the university portal, boosting performance and maintainability for 40,000+ students and staff using C\#, ASP.NET, MySQL, and React}
+  \resumeItem{Upgraded the student health mobile app with meal planning, food logging, and goal-setting features, empowering users to track and achieve nutrition objectives}
+\resumeItemListEnd
+\resumeSubheading{TechConference}{Metropolis, NY}{Lead Frontend Engineer}{Oct 2022 – Sep 2023}
+\resumeItemListStart
+  \resumeItem{Designed and implemented the annual conference website (Next.js, TypeScript) and companion React Native app for a 1,500-participant event as part of a cross-functional team}
+  \resumeItem{Contributed to a frontend subteam that built the admin dashboard, ensuring full responsiveness across all mobile devices}
+\resumeItemListEnd
+\resumeSubheading{Local Community Non-Profit}{Remote, US}{Web Developer}{Jul 2022 – May 2023}
+\resumeItemListStart
+  \resumeItem{Designed and launched new site modules, optimized SEO, and boosted support outreach by 320\% new monthly sessions and 290\% unique visitors}
+\resumeItemListEnd
+
+  \resumeSubHeadingListEnd
+
+
+%-----------PROJECTS-----------
+\section{Projects}
+    \resumeSubHeadingListStart
+      \resumeProjectHeading{\textbf{E-commerce Analytics Tool}}{Personal Project}
+\resumeItemListStart
+  \resumeItem{Architected and optimized a 5,000+ line Python codebase using machine learning classification algorithms and RESTful APIs to identify market trends, processing over 100k requests per day}
+  \resumeItem{Implemented an automated data extraction pipeline with \textasciitilde{}90\% accuracy, leveraging OCR and an open-source large language model (LLM)}
+\resumeItemListEnd
+\resumeProjectHeading{\textbf{Smart Room Monitor}}{Hackathon Project}
+\resumeItemListStart
+  \resumeItem{Supported development of an award-winning application that uses computer vision to identify potentially dangerous occupancy levels in a room (PyTorch, React, OpenCV, Firebase)}
+\resumeItemListEnd
+\resumeProjectHeading{\textbf{Healthcare Companion App}}{Team Lead}
+\resumeItemListStart
+  \resumeItem{Built full-stack healthcare-aid mobile app with interactive user features and real-time syncing (Java, Firebase, XML)}
+\resumeItemListEnd
+
+    \resumeSubHeadingListEnd
+
+
+%-----------TECHNICAL SKILLS-----------
+\section{Technical Skills}
+ \begin{itemize}[leftmargin=0.15in, label={}]
+    \small{\item{
+     \textbf{languages}: {Python, Java, C++, C\#, JavaScript, TypeScript, SQL} \\ 
+\textbf{tools}: {Git, MySQL, PostgreSQL, Docker, AWS, REST APIs, React, Node.js} \\ 
+\textbf{concepts}: {Software Development, Object-Oriented Programming (OOP), Machine Learning, Microservices, Computer Vision, API Design, Agile Methodology} \\ 
+
+    }}
+ \end{itemize}
+
+
+%-------------------------------------------
+\end{document}
