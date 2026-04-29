@@ -6,7 +6,6 @@ from openai import OpenAI
 from .models import TailoredResumeJSON, ATSReport
 from .guard import HallucinationGuard
 
-# System instruction shared across all providers.
 SYSTEM_INSTRUCTION = """You are a keyword-injection engine for ATS resume optimization.
 
 RULES (in priority order):
@@ -35,7 +34,6 @@ OUTPUT RULES:
 - Respond ONLY with valid JSON. No markdown fences, no commentary.
 """
 
-# Phrases that are generic JD filler and should never be treated as ATS keywords
 _STOPWORD_PHRASES = {
     "verbal and written", "written and verbal", "strong communication",
     "fast-paced environment", "work collaboratively", "team environment",
@@ -46,7 +44,6 @@ _STOPWORD_PHRASES = {
     "time management", "critical thinking", "detail-oriented",
 }
 
-# Verbs that indicate a phrase is an action clause, not a keyword
 _FILLER_VERBS = {
     "engage", "collaborate", "communicate", "manage", "develop",
     "maintain", "support", "assist", "ensure", "participate",
@@ -55,21 +52,7 @@ _FILLER_VERBS = {
     "leverage", "drive", "lead", "oversee", "coordinate",
 }
 
-# ─────────────────────────────────────────────────────────────────────
-# OpenRouter free model chain — speed-first ordering.
-# Verified against the OpenRouter API on 2026-04-26.
-#
-# Resume tailoring is structured JSON output — it doesn't need a 120B
-# reasoning model. Prioritize fast MoE and mid-size instruction-tuned
-# models. Active parameter counts are listed where the model is MoE.
-#
-#   1. google/gemma-4-26b-a4b-it  — 26B total, ~4B active (MoE), IT model, very fast
-#   2. nvidia/nemotron-3-nano-30b — 30B total, ~3B active (MoE), fast
-#   3. openai/gpt-oss-20b         — 20B dense, strong instruction-following, fast
-#   4. google/gemma-3-27b-it      — 27B dense, proven on structured tasks
-#   5. meta-llama/llama-3.3-70b   — 70B, higher quality if smaller models struggle
-#   6. google/gemma-3-12b-it      — 12B, fastest lightweight fallback
-# ─────────────────────────────────────────────────────────────────────
+# OpenRouter free-tier models, ordered fastest-first
 MODEL_CHAIN = [
     "google/gemma-4-26b-a4b-it:free",
     "meta-llama/llama-3.3-70b-instruct:free",
@@ -82,61 +65,38 @@ MODEL_CHAIN = [
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 
-class GeminiTailor:
-    """
-    LLM tailoring client. Despite the class name (kept for compatibility),
-    this now routes through OpenRouter's free model tier.
-    """
+class ResumeTailor:
     def __init__(self, api_key: str):
-        self.client = OpenAI(
-            api_key=api_key,
-            base_url=OPENROUTER_BASE_URL,
-        )
+        self.client = OpenAI(api_key=api_key, base_url=OPENROUTER_BASE_URL)
+        self.last_used_model: str | None = None
 
     @staticmethod
     def _filter_keywords(raw_keywords: list) -> list:
-        """Post-LLM filter: remove vague, overly long, or soft-skill keywords."""
         filtered = []
         for kw in raw_keywords:
             kw_clean = kw.strip()
-            if not kw_clean:
+            if not kw_clean or len(kw_clean) < 2:
                 continue
             kw_lower = kw_clean.lower()
-
-            # Drop keywords longer than 4 words (unless they look like a known compound term)
             word_count = len(kw_clean.split())
             if word_count > 4:
                 logger.debug(f"Keyword filtered (too long): '{kw_clean}'")
                 continue
-
-            # Drop if it matches a known stopword phrase
             if any(stop in kw_lower for stop in _STOPWORD_PHRASES):
                 logger.debug(f"Keyword filtered (stopword): '{kw_clean}'")
                 continue
-
-            # Drop multi-word phrases that start with a filler verb
-            if word_count >= 3:
-                first_word = kw_clean.split()[0].lower()
-                if first_word in _FILLER_VERBS:
-                    logger.debug(f"Keyword filtered (verb phrase): '{kw_clean}'")
-                    continue
-
-            # Drop single-character or trivially short keywords
-            if len(kw_clean) < 2:
+            if word_count >= 3 and kw_clean.split()[0].lower() in _FILLER_VERBS:
+                logger.debug(f"Keyword filtered (verb phrase): '{kw_clean}'")
                 continue
-
             filtered.append(kw_clean)
 
         if len(raw_keywords) != len(filtered):
             logger.info(f"Keyword filter: {len(raw_keywords)} → {len(filtered)} (removed {len(raw_keywords) - len(filtered)} vague terms)")
-
         return filtered
 
     def _reliable_generate(self, prompt: str):
-        """
-        Try each model in MODEL_CHAIN in order. Move to the next on quota/rate
-        errors (429) or context-length errors. Raise only when all are exhausted.
-        """
+        """Try each model in MODEL_CHAIN in order, rotating on quota/rate errors.
+        Yields {log: str} events during model rotation, then {result: str} on success."""
         exhausted = []
         self.last_used_model = None
         for model in MODEL_CHAIN:
@@ -183,10 +143,20 @@ class GeminiTailor:
             f"Models tried: {exhausted_str}. Wait a few minutes and try again, or add credits to your OpenRouter account."
         )
 
+    def generate_text(self, prompt: str) -> str:
+        """Run generation and return the result text, logging model rotation to logger."""
+        for event in self._reliable_generate(prompt):
+            if "log" in event:
+                logger.info(event["log"])
+            elif "result" in event:
+                return event["result"]
+        raise RuntimeError("LLM generation returned no result.")
+
     def extract_keywords(self, jd: str):
-        if not jd: jd = "Generic Role"
+        if not jd:
+            jd = "Generic Role"
         yield {"log": "Pass 1/2: Extracting optimal ATS keywords..."}
-        
+
         prompt = f"""Extract 30-50 highly specific, ATS-relevant technical keywords from the job description below. Focus exclusively on hard skills, programming languages, databases, frameworks, libraries, tools, and concrete methodologies.
 Do NOT include soft skills, vague phrases, or long sentences (e.g., exclude "fast-paced environment", "collaborative team", "verbal and written").
 Crucially, do NOT group multiple keywords into a single string. "Python, Java, C++" is wrong. They must be separate array elements: "Python", "Java", "C++".
@@ -203,25 +173,25 @@ Return ONLY a valid JSON list of strings. Example: ["Python", "React", "AWS", "A
                 yield event
             elif "result" in event:
                 raw_text = event["result"]
-                
+
         clean_json = re.sub(r'```json\s*|```', '', raw_text).strip()
         try:
             raw_keywords = json.loads(clean_json)
-        except:
+        except Exception:
             raw_keywords = [k.strip().replace('"', '') for k in clean_json.split(',')]
-            
+
         target_keywords = self._filter_keywords(raw_keywords)
-        
+
         if not target_keywords:
-            raise RuntimeError("NO_KEYWORDS_FOUND|No relevant technical keywords could be extracted from the job description. The job description might be invalid or non-technical.")
-            
+            raise RuntimeError("NO_KEYWORDS_FOUND|No relevant technical keywords could be extracted from the job description.")
+
         yield {"log": f"Extracted {len(target_keywords)} target keywords."}
         yield {"result": target_keywords}
 
     def tailor_experience(self, jd: str, experience_data: Dict, target_keywords: list):
         yield {"log": "Pass 2/2: Tailoring resume bullets with injected keywords..."}
 
-        combined_prompt = f"""You are an expert resume writer. Inject the provided TARGET KEYWORDS naturally into the resume bullets. Follow the strict rules outlined in the system prompt. Do not hallucinate experience.
+        prompt = f"""You are an expert resume writer. Inject the provided TARGET KEYWORDS naturally into the resume bullets. Follow the strict rules outlined in the system prompt. Do not hallucinate experience.
 
 === TARGET KEYWORDS TO INJECT ===
 {", ".join(target_keywords)}
@@ -238,52 +208,52 @@ Return ONLY a valid JSON list of strings. Example: ["Python", "React", "AWS", "A
   "projects": [ {{ "name": "...", "role": "...", "bullets": [{{"original":"...","tailored":"...","rationale":"..."}}] }} ]
 }}
 """
-
         raw_text = None
-        for event in self._reliable_generate(combined_prompt):
+        for event in self._reliable_generate(prompt):
             if "log" in event:
                 yield event
             elif "result" in event:
                 raw_text = event["result"]
-                
+
         clean_json = re.sub(r'```json\s*|```', '', raw_text).strip()
         data = json.loads(clean_json)
-
         tailored_resume = TailoredResumeJSON(**data)
 
-        # Keyword Audit: Original vs Tailored
         def keyword_in_text(keyword, text):
             escaped = re.escape(keyword)
             pattern = r'(?<![a-zA-Z])' + escaped + r'(?![a-zA-Z+#])'
             return bool(re.search(pattern, text, re.IGNORECASE))
 
-        orig_text_parts = []
+        orig_parts = []
         for exp in tailored_resume.experience:
-            for b in exp.bullets: orig_text_parts.append(b.original)
+            for b in exp.bullets:
+                orig_parts.append(b.original)
         for prj in tailored_resume.projects:
-            for b in prj.bullets: orig_text_parts.append(b.original)
+            for b in prj.bullets:
+                orig_parts.append(b.original)
         skills_flat = " ".join(
             item for items in experience_data.get('skills', {}).values()
             for item in (items if isinstance(items, list) else [items])
         )
         edu_flat = " ".join(
-            str(v) for edu in (experience_data.get('education') if isinstance(experience_data.get('education'), list) else [experience_data.get('education', {})])
+            str(v)
+            for edu in (experience_data.get('education') if isinstance(experience_data.get('education'), list) else [experience_data.get('education', {})])
             for v in edu.values()
         )
-        orig_text_parts += [skills_flat, edu_flat]
-        orig_full_text = " ".join(orig_text_parts)
+        orig_full = " ".join(orig_parts + [skills_flat, edu_flat])
 
-        tail_text_parts = []
-        for exp in tailored_resume.experience:
-            for b in exp.bullets: tail_text_parts.append(b.tailored)
-        for prj in tailored_resume.projects:
-            for b in prj.bullets: tail_text_parts.append(b.tailored)
-        tail_full_text = " ".join(tail_text_parts)
+        tail_full = " ".join(
+            b.tailored
+            for exp in tailored_resume.experience for b in exp.bullets
+        ) + " " + " ".join(
+            b.tailored
+            for prj in tailored_resume.projects for b in prj.bullets
+        )
 
         found_keywords, added_keywords, missing_keywords = [], [], []
         for kw in target_keywords:
-            in_orig = keyword_in_text(kw, orig_full_text)
-            in_tail = keyword_in_text(kw, tail_full_text)
+            in_orig = keyword_in_text(kw, orig_full)
+            in_tail = keyword_in_text(kw, tail_full)
             if in_orig:
                 found_keywords.append(kw)
             elif in_tail:
@@ -300,9 +270,8 @@ Return ONLY a valid JSON list of strings. Example: ["Python", "React", "AWS", "A
         )
 
         yield {"log": "Running Hallucination Guard checks on all AI bullets..."}
-        checked_count = 0
-        reverted_count = 0
-        
+        checked_count = reverted_count = 0
+
         for exp in tailored_resume.experience:
             exp.bullets = exp.bullets[:4]
             for b in exp.bullets:
@@ -324,7 +293,6 @@ Return ONLY a valid JSON list of strings. Example: ["Python", "React", "AWS", "A
                     b.rationale = "⚠️ REJECTED: " + b.rationale + " (Failed hallucination check)"
                     b.tailored = b.original
                     reverted_count += 1
-                    
-        yield {"log": f"Guard complete. Checked {checked_count} bullets, reverted {reverted_count}."}
 
+        yield {"log": f"Guard complete. Checked {checked_count} bullets, reverted {reverted_count}."}
         yield {"result": tailored_resume}

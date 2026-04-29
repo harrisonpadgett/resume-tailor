@@ -2,5 +2,5 @@ from .models import BulletPoint, ExperienceEntry, ProjectEntry, ATSReport, Tailo
 from .scraper import JobScraper
 from .guard import HallucinationGuard
 from .latex import LaTeXEngine
-from .llm import GeminiTailor
-from .tailor import ResumeTailor
+from .llm import ResumeTailor
+from .extractor import ResumeExtractor
