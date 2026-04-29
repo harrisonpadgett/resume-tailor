@@ -7,7 +7,9 @@ const API_URL = "http://127.0.0.1:8000/api";
 function App() {
   const [sourceData, setSourceData] = useState(null);
   const [resumeTemplate, setResumeTemplate] = useState("");
+  const [resumeSource, setResumeSource] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [uploadStatusText, setUploadStatusText] = useState("Processing");
   const [error, setError] = useState(null);
   const [logs, setLogs] = useState([]);
 
@@ -23,41 +25,51 @@ function App() {
     if (!file) return;
 
     setLoading(true);
+    setUploadStatusText("Uploading resume...");
     setError(null);
     try {
       const formData = new FormData();
       formData.append("file", file);
 
+      setUploadStatusText("Sending file to extraction pipeline...");
       const res = await fetch(`${API_URL}/extract`, {
         method: "POST",
         body: formData,
       });
+      setUploadStatusText("Running LLM extraction on LaTeX content...");
       const data = await res.json();
+      setUploadStatusText("Building resume profile from extracted data...");
 
       if (!res.ok) throw new Error(data.detail || "Extraction failed");
       setSourceData(data.source_data);
       setResumeTemplate(data.resume_template);
+      setResumeSource("uploaded");
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
+      setUploadStatusText("Processing");
     }
   };
 
   const handleUseSample = async () => {
     setLoading(true);
+    setUploadStatusText("Loading sample resume...");
     setError(null);
     try {
       const res = await fetch(`${API_URL}/sample`);
+      setUploadStatusText("Preparing sample source_data and template...");
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Failed to load sample data");
 
       setSourceData(data.source_data);
       setResumeTemplate(data.resume_template);
+      setResumeSource("sample");
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
+      setUploadStatusText("Processing");
     }
   };
 
@@ -355,7 +367,7 @@ function App() {
 
             {loading && (
               <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-                <span className="loader-inline"><Loader2 className="lucide-spin" /> <span>Processing...</span></span>
+                <span className="loader-inline"><Loader2 className="lucide-spin" /> <span>{uploadStatusText}</span></span>
               </div>
             )}
           </div>
@@ -369,8 +381,10 @@ function App() {
       <header className="topbar">
         <div className="topbar-logo"><FileText /> Resume Tailor</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <span className="badge" style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)', marginBottom: 0 }}>Base Resume Active</span>
-          <button className="btn btn-outline" style={{ padding: '0.4rem 1rem' }} onClick={() => { setSourceData(null); setTailorResult(null); }}>
+          <span className="badge" style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success-text)', marginBottom: 0 }}>
+            {resumeSource === "uploaded" ? "Uploaded Resume Active" : "Sample Resume Active"}
+          </span>
+          <button className="btn btn-outline" style={{ padding: '0.4rem 1rem' }} onClick={() => { setSourceData(null); setTailorResult(null); setResumeSource(null); }}>
             <RotateCcw size={16} /> Start Over
           </button>
         </div>
@@ -420,7 +434,7 @@ function App() {
               </div>
 
               <button className="btn btn-primary btn-block" onClick={handleTailor} disabled={loading}>
-                {loading ? <><Loader2 className="lucide-spin" /> Processing...</> : "Tailor Resume"}
+                {loading ? <><Loader2 className="lucide-spin" /> Processing</> : "Tailor Resume"}
               </button>
 
               {error && <div className="alert alert-danger" style={{ marginTop: '1rem' }}>{error}</div>}
